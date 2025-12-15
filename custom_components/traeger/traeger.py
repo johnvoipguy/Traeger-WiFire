@@ -131,10 +131,10 @@ class traeger:
         except aiohttp.ClientResponseError as e:
             if e.status == 400:
                 _LOGGER.error(
-                    f"Cognito authentication failed with 400 Bad Request. "
-                    f"This may indicate that Traeger has changed their CLIENT_ID. "
+                    "Cognito authentication failed with 400 Bad Request. "
+                    "This may indicate that Traeger has changed their CLIENT_ID. "
                     f"Current CLIENT_ID: {self.client_id}. "
-                    f"Please check https://github.com/johnvoipguy/Traeger-WiFire/issues for updates. "
+                    "Please check https://github.com/johnvoipguy/Traeger-WiFire/issues for updates. "
                     f"Error details: status={e.status}, message={e.message}"
                 )
             else:
