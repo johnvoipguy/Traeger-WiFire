@@ -147,9 +147,11 @@ ruff check .
 ## Temperature Handling
 
 - Support both Fahrenheit and Celsius
-- Minimum grill temperature: 165°F (75°C)
-- Maximum grill temperature: 500°F (260°C)
+- Minimum grill temperature: 165°F (75°C) - defined by `GRILL_MIN_TEMP_F` / `GRILL_MIN_TEMP_C`
+- Maximum grill temperature: Retrieved from API via `grill_limits.max_grill_temp` (varies by grill model)
+- Probe maximum: 212°F (100°C) for meat probe temperature
 - Probe presets available for common foods (Chicken, Beef, Pork, Turkey, Fish)
+- Temperature limits come from the grill's API response (`state.limits`) when available
 - Always respect user's Home Assistant temperature unit preference
 
 ## Integration-Specific Context
