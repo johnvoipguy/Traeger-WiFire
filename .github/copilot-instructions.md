@@ -7,7 +7,8 @@ This is a Home Assistant custom integration for Traeger WiFire grills. It allows
 **Key Information:**
 - **Domain**: `traeger`
 - **Integration Type**: Device integration with cloud push IoT class
-- **Version**: 1.0.1
+- **Version**: 1.0.1 (from `manifest.json` - this is the authoritative version for the integration)
+  - Note: `const.py` has an older VERSION constant (0.1.0) that may need updating
 - **Quality Scale**: Bronze (working towards Silver)
 - **Dependencies**: `aiomqtt>=2.1.0,<3`
 - **Codeowner**: @johnvoipguy
@@ -149,8 +150,8 @@ ruff check .
 - Support both Fahrenheit and Celsius
 - Minimum grill temperature: 165°F (75°C) - defined by `GRILL_MIN_TEMP_F` / `GRILL_MIN_TEMP_C`
 - Maximum grill temperature: Retrieved from API via `grill_limits.max_grill_temp` (varies by grill model)
-- Probe maximum: 212°F (100°C) for meat probe temperature
-- Probe presets available for common foods (Chicken, Beef, Pork, Turkey, Fish)
+- Probe maximum: 212°F (100°C) for meat probe temperature (hardcoded in `TraegerGrillProbe.max_temp`)
+- Probe presets available for common foods defined in `PROBE_PRESET_MODES` (Chicken: 165°F/74°C, Beef, Pork, Turkey, Fish)
 - Temperature limits come from the grill's API response (`state.limits`) when available
 - Always respect user's Home Assistant temperature unit preference
 
