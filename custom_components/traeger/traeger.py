@@ -28,12 +28,11 @@ API_BASE = "https://1ywgyc65d1.execute-api.us-west-2.amazonaws.com/prod"
 
 
 class traeger:
-    def __init__(self, username, password, hass: HomeAssistant, session, client_id=None):
+    def __init__(self, username, password, hass: HomeAssistant, session):
         self.username = username
         self.password = password
         self.hass = hass
         self.session = session
-        self.client_id = client_id if client_id else CLIENT_ID
         self.mqtt_client = None
         self.grills = []
         self.grill_status = {}
@@ -61,7 +60,6 @@ class traeger:
 
     async def api_wrapper(self, method: str, url: str, data: dict = {}, headers: dict = {}):
         _LOGGER.debug(f"API call: method={method}, url={url}, data={data}, headers={headers}")
-        response = None
         response_text = None
         try:
             async with async_timeout.timeout(TIMEOUT):
@@ -74,22 +72,14 @@ class traeger:
                 else:
                     raise ValueError(f"Unsupported method: {method}")
 
-                # Read response text before raising status error
-                # This ensures we can log the error body even if status check fails
+                # Read response text before checking status to avoid "Connection closed" error
                 response_text = await response.text()
                 response.raise_for_status()
 
                 content_type = response.headers.get("Content-Type", "")
                 if "application/x-amz-json-1.1" in content_type:
-                    # AWS-specific JSON format
                     return json.loads(response_text)
-                # Standard JSON response
-                try:
-                    return json.loads(response_text)
-                except json.JSONDecodeError:
-                    # If JSON parsing fails, return the text as-is
-                    _LOGGER.warning(f"Failed to parse JSON response from {url}, returning raw text")
-                    return response_text
+                return json.loads(response_text)
         except TimeoutError:
             _LOGGER.error(f"Timeout error fetching data from {url}")
             raise
@@ -100,9 +90,7 @@ class traeger:
             )
             raise
         except aiohttp.ClientError as e:
-            # For other client errors (like connection errors before getting response)
-            error_body = response_text if response_text else "No response body available"
-            _LOGGER.error(f"Client error fetching data from {url}: {e}, body={error_body}")
+            _LOGGER.error(f"Client error fetching data from {url}: {e}")
             raise
 
     async def do_cognito(self):
@@ -111,14 +99,14 @@ class traeger:
         payload = {
             "AuthParameters": {"USERNAME": self.username, "PASSWORD": self.password},
             "AuthFlow": "USER_PASSWORD_AUTH",
-            "ClientId": self.client_id,
+            "ClientId": CLIENT_ID,
         }
         headers = {
             "Content-Type": "application/x-amz-json-1.1",
             "X-Amz-Date": amzdate,
             "X-Amz-Target": "AWSCognitoIdentityProviderService.InitiateAuth",
         }
-        _LOGGER.debug(f"Sending Cognito request with CLIENT_ID={self.client_id}")
+        _LOGGER.debug(f"Sending Cognito request: payload={payload}, headers={headers}")
         try:
             response = await self.api_wrapper(
                 "post",
@@ -129,18 +117,9 @@ class traeger:
             _LOGGER.debug(f"Cognito response: {response}")
             return response
         except aiohttp.ClientResponseError as e:
-            if e.status == 400:
-                _LOGGER.error(
-                    "Cognito authentication failed with 400 Bad Request. "
-                    "This may indicate that Traeger has changed their CLIENT_ID. "
-                    f"Current CLIENT_ID: {self.client_id}. "
-                    "Please check https://github.com/johnvoipguy/Traeger-WiFire/issues for updates. "
-                    f"Error details: status={e.status}, message={e.message}"
-                )
-            else:
-                _LOGGER.error(
-                    f"Cognito request failed: status={e.status}, message={e.message}"
-                )
+            _LOGGER.error(
+                f"Cognito request failed: status={e.status}, message={e.message}, response={e}"
+            )
             raise
         except Exception as e:
             _LOGGER.error(f"Cognito request failed: {e}")

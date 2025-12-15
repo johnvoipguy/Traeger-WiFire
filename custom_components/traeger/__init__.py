@@ -10,7 +10,7 @@ from homeassistant.const import EVENT_HOMEASSISTANT_STARTED, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .const import CONF_CLIENT_ID, DOMAIN
+from .const import DOMAIN
 from .coordinator import TraegerCoordinator
 from .traeger import traeger as TraegerClient
 
@@ -36,7 +36,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry.data["password"],
         hass,
         session,
-        entry.data.get(CONF_CLIENT_ID),
     )
 
     # Create shared coordinator and attach it to the client

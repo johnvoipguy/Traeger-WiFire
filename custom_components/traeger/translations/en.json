@@ -1,21 +1,17 @@
 {
-    "config": {
+    "config": {        
         "step": {
             "user": {
                 "title": "Traeger WiFIRE",
                 "description": "Sign in with your Traeger account",
                 "data": {
                     "username": "Email",
-                    "password": "Password",
-                    "client_id": "AWS Cognito Client ID (Optional - leave blank to use default)"
-                },
-                "data_description": {
-                    "client_id": "Advanced: Only change this if instructed to use a different CLIENT_ID due to Traeger API changes. Leave blank to use the default CLIENT_ID."
+                    "password": "Password"
                 }
             }
         },
         "error": {
-            "auth": "Invalid username or password. If authentication continues to fail with error 400, Traeger may have changed their CLIENT_ID. Check https://github.com/johnvoipguy/Traeger-WiFire/issues for updates."
+            "auth": "Invalid username or password"
         },
         "abort": {
             "single_instance_allowed": "Only a single configuration of Traeger is allowed."
