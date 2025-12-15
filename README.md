@@ -84,6 +84,15 @@ State | Description
 
 ## Configuration is done in the UI
 
+When adding the integration, you'll be prompted for:
+- **Email**: Your Traeger account email
+- **Password**: Your Traeger account password  
+- **AWS Cognito Client ID** (Optional): Leave blank to use the default. Only change this if you're experiencing authentication issues and have been provided with a new CLIENT_ID.
+
+## Troubleshooting
+
+If you're experiencing authentication issues (400 errors, "Connection closed", etc.), please see the [Troubleshooting Guide](TROUBLESHOOTING.md) for detailed help.
+
 <!---->
 
 ## Contributions are welcome!

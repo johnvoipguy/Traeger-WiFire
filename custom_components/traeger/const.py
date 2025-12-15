@@ -24,6 +24,7 @@ PLATFORMS = [CLIMATE, SENSOR, SWITCH, NUMBER, SELECT]
 CONF_ENABLED = "enabled"
 CONF_USERNAME = "username"
 CONF_PASSWORD = "password"
+CONF_CLIENT_ID = "client_id"
 
 # Defaults
 DEFAULT_NAME = "Traeger Grill"

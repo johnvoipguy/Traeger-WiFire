@@ -9,7 +9,7 @@ from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 
-from .const import CONF_PASSWORD, CONF_USERNAME, DOMAIN, PLATFORMS
+from .const import CONF_CLIENT_ID, CONF_PASSWORD, CONF_USERNAME, DOMAIN, PLATFORMS
 from .traeger import traeger
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
@@ -34,7 +34,9 @@ class BlueprintFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             valid = await self._test_credentials(
-                user_input[CONF_USERNAME], user_input[CONF_PASSWORD]
+                user_input[CONF_USERNAME],
+                user_input[CONF_PASSWORD],
+                user_input.get(CONF_CLIENT_ID)
             )
             if valid:
                 return self.async_create_entry(title=user_input[CONF_USERNAME], data=user_input)
@@ -46,6 +48,7 @@ class BlueprintFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         # Provide defaults for form
         user_input[CONF_USERNAME] = ""
         user_input[CONF_PASSWORD] = ""
+        user_input[CONF_CLIENT_ID] = ""
 
         return await self._show_config_form(user_input)
 
@@ -62,16 +65,17 @@ class BlueprintFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 {
                     vol.Required(CONF_USERNAME, default=user_input[CONF_USERNAME]): str,
                     vol.Required(CONF_PASSWORD, default=user_input[CONF_PASSWORD]): str,
+                    vol.Optional(CONF_CLIENT_ID, default=user_input.get(CONF_CLIENT_ID, "")): str,
                 }
             ),
             errors=self._errors,
         )
 
-    async def _test_credentials(self, username, password):
+    async def _test_credentials(self, username, password, client_id=None):
         """Return true if credentials is valid."""
         try:
             session = async_create_clientsession(self.hass)
-            client = traeger(username, password, self.hass, session)
+            client = traeger(username, password, self.hass, session, client_id)
             await client.get_user_data()
             return True
         except Exception as exception:  # pylint: disable=broad-except

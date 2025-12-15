@@ -28,11 +28,12 @@ API_BASE = "https://1ywgyc65d1.execute-api.us-west-2.amazonaws.com/prod"
 
 
 class traeger:
-    def __init__(self, username, password, hass: HomeAssistant, session):
+    def __init__(self, username, password, hass: HomeAssistant, session, client_id=None):
         self.username = username
         self.password = password
         self.hass = hass
         self.session = session
+        self.client_id = client_id if client_id else CLIENT_ID
         self.mqtt_client = None
         self.grills = []
         self.grill_status = {}
@@ -101,14 +102,14 @@ class traeger:
         payload = {
             "AuthParameters": {"USERNAME": self.username, "PASSWORD": self.password},
             "AuthFlow": "USER_PASSWORD_AUTH",
-            "ClientId": CLIENT_ID,
+            "ClientId": self.client_id,
         }
         headers = {
             "Content-Type": "application/x-amz-json-1.1",
             "X-Amz-Date": amzdate,
             "X-Amz-Target": "AWSCognitoIdentityProviderService.InitiateAuth",
         }
-        _LOGGER.debug(f"Sending Cognito request with CLIENT_ID={CLIENT_ID}")
+        _LOGGER.debug(f"Sending Cognito request with CLIENT_ID={self.client_id}")
         try:
             response = await self.api_wrapper(
                 "post",
@@ -123,7 +124,7 @@ class traeger:
                 _LOGGER.error(
                     f"Cognito authentication failed with 400 Bad Request. "
                     f"This may indicate that Traeger has changed their CLIENT_ID. "
-                    f"Current CLIENT_ID: {CLIENT_ID}. "
+                    f"Current CLIENT_ID: {self.client_id}. "
                     f"Please check https://github.com/johnvoipguy/Traeger-WiFire/issues for updates. "
                     f"Error details: status={e.status}, message={e.message}"
                 )
