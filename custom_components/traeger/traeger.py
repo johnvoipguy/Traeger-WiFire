@@ -60,6 +60,8 @@ class traeger:
 
     async def api_wrapper(self, method: str, url: str, data: dict = {}, headers: dict = {}):
         _LOGGER.debug(f"API call: method={method}, url={url}, data={data}, headers={headers}")
+        response = None
+        response_text = None
         try:
             async with async_timeout.timeout(TIMEOUT):
                 if method == "get":
@@ -70,17 +72,23 @@ class traeger:
                     response = await self.session.post(url, data=json.dumps(data), headers=headers)
                 else:
                     raise ValueError(f"Unsupported method: {method}")
+
+                # Read response text before raising status error
+                # This ensures we can log the error body even if status check fails
+                response_text = await response.text()
                 response.raise_for_status()
+
                 content_type = response.headers.get("Content-Type", "")
                 if "application/x-amz-json-1.1" in content_type:
-                    return json.loads(await response.text())
-                return await response.json()
+                    return json.loads(response_text)
+                return json.loads(response_text)
         except TimeoutError:
             _LOGGER.error(f"Timeout error fetching data from {url}")
             raise
         except aiohttp.ClientResponseError as e:
+            error_body = response_text if response_text else "Unable to read response body"
             _LOGGER.error(
-                f"Client error fetching data from {url}: {e.status}, message={e.message}, url={url}, body={await response.text()}"
+                f"Client error fetching data from {url}: {e.status}, message={e.message}, url={url}, body={error_body}"
             )
             raise
         except aiohttp.ClientError as e:
@@ -100,7 +108,7 @@ class traeger:
             "X-Amz-Date": amzdate,
             "X-Amz-Target": "AWSCognitoIdentityProviderService.InitiateAuth",
         }
-        _LOGGER.debug(f"Sending Cognito request: payload={payload}, headers={headers}")
+        _LOGGER.debug(f"Sending Cognito request with CLIENT_ID={CLIENT_ID}")
         try:
             response = await self.api_wrapper(
                 "post",
@@ -111,9 +119,18 @@ class traeger:
             _LOGGER.debug(f"Cognito response: {response}")
             return response
         except aiohttp.ClientResponseError as e:
-            _LOGGER.error(
-                f"Cognito request failed: status={e.status}, message={e.message}, response={e}"
-            )
+            if e.status == 400:
+                _LOGGER.error(
+                    f"Cognito authentication failed with 400 Bad Request. "
+                    f"This may indicate that Traeger has changed their CLIENT_ID. "
+                    f"Current CLIENT_ID: {CLIENT_ID}. "
+                    f"Please check https://github.com/johnvoipguy/Traeger-WiFire/issues for updates. "
+                    f"Error details: status={e.status}, message={e.message}"
+                )
+            else:
+                _LOGGER.error(
+                    f"Cognito request failed: status={e.status}, message={e.message}"
+                )
             raise
         except Exception as e:
             _LOGGER.error(f"Cognito request failed: {e}")
