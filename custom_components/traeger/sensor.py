@@ -5,7 +5,11 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntity,
+    SensorStateClass,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import SIGNAL_STRENGTH_DECIBELS, UnitOfTemperature, UnitOfTime
 from homeassistant.core import HomeAssistant
@@ -43,6 +47,59 @@ MODE_LABELS: dict[int, str] = {
 }
 GRILL_STATE_MAPPING = MODE_LABELS.copy()
 
+# --- BLUETOOTH PROBE SENSOR CLASS ---
+class TraegerBluetoothProbeSensor(TraegerBaseEntity, SensorEntity):
+    """Representation of a Traeger Bluetooth Probe (BT0, BT1, etc)."""
+
+    def __init__(self, client, grill_id, name, channel, coordinator):
+        """Initialize the sensor."""
+        super().__init__(client, grill_id, name=f"Probe {channel} BT", coordinator=coordinator)
+        self.channel = channel
+        self._attr_unique_id = f"{grill_id}_bt_probe_{channel}"
+        self._attr_name = f"{name} BT Probe {channel}"
+        self._attr_native_unit_of_measurement = UnitOfTemperature.FAHRENHEIT
+        self._attr_device_class = SensorDeviceClass.TEMPERATURE
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+
+    def _find_probe(self) -> dict | None:
+        """Find this probe in the accessory list by Channel ID."""
+        status = (self.coordinator.data.get(self.grill_id, {}).get("status") or {})
+        for acc in status.get("acc", []):
+            # Match by Channel (BT0, BT1) instead of UUID to be safe at startup
+            if acc.get("channel") == self.channel:
+                return acc
+        return None
+
+    @property
+    def available(self):
+        """Return True if the probe is reported as connected."""
+        acc = self._find_probe()
+        if not acc:
+            return False
+        # Check 'con' (Connected) flag. 1 = Connected.
+        return acc.get("con", 0) == 1
+
+    @property
+    def native_value(self):
+        """Return the current temperature."""
+        acc = self._find_probe()
+        if acc and "btprobe" in acc:
+            return acc["btprobe"].get("get_temp")
+        return None
+    @property
+    def extra_state_attributes(self):
+        """Return battery and target temps."""
+        acc = self._find_probe()
+        if acc and "btprobe" in acc:
+            details = acc["btprobe"]
+            return {
+                "target_temp": details.get("set_temp"),
+                "battery_level": details.get("batt"),
+                "ambient_temp": details.get("ambient_temp"),
+                "uuid": acc.get("uuid")
+            }
+        return {}
+
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
     """Set up sensor platform."""
@@ -57,6 +114,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
     for grill in grills:
         grill_id = grill["thingName"]
+        grill_name = grill.get("friendlyName", grill_id)
 
         # Probe monitors: temperature and status
         temp_monitor = TraegerGrillMonitor(
@@ -301,6 +359,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                 ),
             ]
         )
+
+        # --- FORCED: Bluetooth Probe Addition ---
+        # We add these blindly so they exist immediately in HA.
+        # They will pick up data as soon as the grill reports "BT0" or "BT1".
+        entities.append(TraegerBluetoothProbeSensor(client, grill_id, grill_name, "BT0", coordinator))
+        entities.append(TraegerBluetoothProbeSensor(client, grill_id, grill_name, "BT1", coordinator))
+        # ----------------------------------------
 
     async_add_entities(entities)
 
