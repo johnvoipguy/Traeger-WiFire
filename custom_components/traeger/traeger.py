@@ -25,7 +25,7 @@ _LOGGER = logging.getLogger(__name__)
 ### CLIENT_ID = "2fuohjtqv1e63dckp5v84rau0j"
 CLIENT_ID = "4id473dsrcq4kevlgrikukqn2a"
 TIMEOUT = 60
-API_BASE = "https://1ywgyc65d1.execute-api.us-west-2.amazonaws.com/prod"
+API_BASE = "https://mobile-iot-api.iot.traegergrills.io"
 
 
 class traeger:
@@ -140,7 +140,7 @@ class traeger:
         await self.refresh_token()
         return await self.api_wrapper(
             "get",
-            "https://1ywgyc65d1.execute-api.us-west-2.amazonaws.com/prod/users/self",
+            f"{API_BASE}/users/self",
             headers={"Authorization": f"Bearer {self.token}"},
         )
 
@@ -282,7 +282,7 @@ class traeger:
                 mqtt_request_time = time.time()
                 json_data = await self.api_wrapper(
                     "post",
-                    "https://1ywgyc65d1.execute-api.us-west-2.amazonaws.com/prod/mqtt-connections",
+                    f"{API_BASE}/mqtt-connections",
                     headers={"Authorization": f"Bearer {self.token}"},
                 )
                 self.mqtt_url_expires = json_data["expirationSeconds"] + mqtt_request_time
