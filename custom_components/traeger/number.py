@@ -38,7 +38,7 @@ class TraegerNumber(TraegerBaseEntity, NumberEntity):
         self._attr_native_max_value = 1440  # 24 hours in minutes
         self._attr_native_step = 1
         self._attr_native_unit_of_measurement = "min"
-        _LOGGER.debug("Initialized number {self.entity_id} for grill {grill_id}")
+        _LOGGER.debug(f"Initialized number {self.entity_id} for grill {grill_id}")
 
     @property
     def icon(self):
@@ -70,7 +70,7 @@ class TraegerNumber(TraegerBaseEntity, NumberEntity):
     def native_value(self):
         state = self.client.get_state_for_device(self.grill_id)
         if not state or not state.get("status"):
-            _LOGGER.debug("No state data for {self.entity_id}: state={state}")
+            _LOGGER.debug(f"No state data for {self.entity_id}: state={state}")
             return None
         start = state.get("status", {}).get("cook_timer_start", 0)
         end = state.get("status", {}).get("cook_timer_end", 0)
