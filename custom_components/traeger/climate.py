@@ -309,3 +309,4 @@ class TraegerGrillProbe(ClimateEntity, TraegerBaseEntity):
     @property
     def supported_features(self):
         return ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.PRESET_MODE
+        
