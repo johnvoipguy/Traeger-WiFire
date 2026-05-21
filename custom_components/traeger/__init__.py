@@ -27,7 +27,7 @@ PLATFORMS: Final[list[Platform]] = [
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Traeger from a config entry."""
-    _LOGGER.debug("Starting Traeger setup for entry: {entry.entry_id}")
+    _LOGGER.debug(f"Starting Traeger setup for entry: {entry.entry_id}")
 
     # Create client (your original sequence)
     session = async_get_clientsession(hass)
@@ -71,7 +71,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def _start(_: object | None = None) -> None:
         """Start cloud/MQTT in background on HA loop."""
         hass.async_create_background_task(
-            client.start(), name="{DOMAIN}_client_start", eager_start=True
+            client.start(), name=f"{DOMAIN}_client_start", eager_start=True
         )
 
     if hass.is_running:
@@ -80,25 +80,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry.async_on_unload(hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _start))
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    _LOGGER.debug("Forwarded setup for platforms: {PLATFORMS}")
+    _LOGGER.debug(f"Forwarded setup for platforms: {PLATFORMS}")
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    _LOGGER.debug("Unloading Traeger integration for entry: {entry.entry_id}")
+    _LOGGER.debug(f"Unloading Traeger integration for entry: {entry.entry_id}")
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
         data = hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
         client = data and data.get("client")
         if client and hasattr(client, "kill"):
             await client.kill()
-    _LOGGER.debug("Unloaded Traeger integration for entry: {entry.entry_id}, unload_ok={unload_ok}")
+    _LOGGER.debug(f"Unloaded Traeger integration for entry: {entry.entry_id}, unload_ok={unload_ok}")
     return unload_ok
 
 
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Reload config entry."""
-    _LOGGER.debug("Reloading Traeger integration for entry: {entry.entry_id}")
+    _LOGGER.debug(f"Reloading Traeger integration for entry: {entry.entry_id}")
     await async_unload_entry(hass, entry)
     await async_setup_entry(hass, entry)

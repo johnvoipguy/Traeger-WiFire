@@ -58,7 +58,7 @@ class TraegerGrillMonitor:
             channel = acc.get("uuid") or acc.get("channel")
             if not channel or not isinstance(channel, str):
                 _LOGGER.debug(
-                    "Skipping accessory with missing/invalid channel on grill {self.grill_id}: {acc}"
+                    f"Skipping accessory with missing/invalid channel on grill {self.grill_id}: {acc}"
                 )
                 continue
             if channel in self._seen_channels:
@@ -82,14 +82,14 @@ class TraegerGrillMonitor:
         for channel in self._iter_new_channels(state):
             entity = self._make_entity(channel)
             _LOGGER.debug(
-                "Discovered {self.entity_class.__name__} on grill {self.grill_id}: channel={channel}"
+                f"Discovered {self.entity_class.__name__} on grill {self.grill_id}: channel={channel}"
             )
             new_entities.append(entity)
             self._seen_channels.add(channel)
 
         if new_entities:
             _LOGGER.debug(
-                "Monitor for grill {self.grill_id} adding {len(new_entities)} entity(ies)"
+                f"Monitor for grill {self.grill_id} adding {len(new_entities)} entity(ies)"
             )
             self.async_add_entities(new_entities)
 
@@ -102,7 +102,7 @@ class TraegerGrillMonitor:
             added = self._add_new_from_state(state)
             if added:
                 _LOGGER.debug(
-                    "Monitor for grill {self.grill_id} added {added} new entity(ies) from coordinator update"
+                    f"Monitor for grill {self.grill_id} added {added} new entity(ies) from coordinator update"
                 )
         except Exception:  # Best-effort; never raise from callbacks
             _LOGGER.exception("Monitor update failed for grill {self.grill_id}")
@@ -110,7 +110,7 @@ class TraegerGrillMonitor:
     async def async_setup(self) -> None:
         """Discover accessories and add entities. Subscribe for future updates."""
         _LOGGER.debug(
-            "Setting up probe monitor for grill {self.grill_id} using {self.entity_class.__name__}"
+            f"Setting up probe monitor for grill {self.grill_id} using {self.entity_class.__name__}"
         )
 
         # Initial discovery from latest available state
@@ -121,7 +121,7 @@ class TraegerGrillMonitor:
         if self.coordinator and hasattr(self.coordinator, "async_add_listener"):
             self._unsub = self.coordinator.async_add_listener(self._on_coordinator_update)
             _LOGGER.debug(
-                "Probe monitor subscribed to coordinator updates for grill {self.grill_id}"
+                f"Probe monitor subscribed to coordinator updates for grill {self.grill_id}"
             )
 
     def shutdown(self) -> None:
