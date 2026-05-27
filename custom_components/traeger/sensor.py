@@ -479,8 +479,8 @@ class TraegerSensor(TraegerBaseEntity, SensorEntity):
         if self._key in ["grill_clean_countdown", "grease_trap_clean_countdown"]:
             return state.get("usage", {}).get(self._key)
         if self._key == "pellet_level":
-            features = state.get("features", {})
-            if not features.get("pellet_sensor_connected", 0):
+            features = state.get("features") or {}
+            if features.get("pellet_sensor_connected") != 1:
                 return None
             return state.get("status", {}).get("pellet_level")
         return state.get("status", {}).get(self._key)
