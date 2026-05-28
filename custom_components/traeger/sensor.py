@@ -220,9 +220,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                     grill_id,
                     "Auger Runtime",
                     "auger",
-                    UnitOfTime.HOURS,
+                    UnitOfTime.SECONDS,
                     category=EntityCategory.DIAGNOSTIC,
                     enabled_default=False,
+                    device_class=SensorDeviceClass.DURATION,
                 ),
                 TraegerSensor(
                     coordinator,
@@ -230,9 +231,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                     grill_id,
                     "Fan Runtime",
                     "fan",
-                    UnitOfTime.HOURS,
+                    UnitOfTime.SECONDS,
                     category=EntityCategory.DIAGNOSTIC,
                     enabled_default=False,
+                    device_class=SensorDeviceClass.DURATION,
                 ),
                 TraegerSensor(
                     coordinator,
@@ -240,9 +242,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                     grill_id,
                     "Hotrod Runtime",
                     "hotrod",
-                    UnitOfTime.HOURS,
+                    UnitOfTime.SECONDS,
                     category=EntityCategory.DIAGNOSTIC,
                     enabled_default=False,
+                    device_class=SensorDeviceClass.DURATION,
                 ),
                 TraegerSensor(
                     coordinator,
@@ -250,9 +253,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                     grill_id,
                     "Runtime",
                     "runtime",
-                    UnitOfTime.HOURS,
+                    UnitOfTime.SECONDS,
                     category=EntityCategory.DIAGNOSTIC,
                     enabled_default=False,
+                    device_class=SensorDeviceClass.DURATION,
                 ),
                 TraegerSensor(
                     coordinator,
@@ -463,10 +467,7 @@ class TraegerSensor(TraegerBaseEntity, SensorEntity):
         if self._key == "ssid":
             return state.get("settings", {}).get("ssid")
         if self._key in ["auger", "fan", "hotrod", "runtime"]:
-            raw = state.get("usage", {}).get(self._key)
-            if raw is None:
-                return None
-            return round(raw / 3600, 1)
+            return state.get("usage", {}).get(self._key)
         if self._key in [
             "ignite_fail",
             "overheat",
@@ -481,11 +482,6 @@ class TraegerSensor(TraegerBaseEntity, SensorEntity):
             return state.get("usage", {}).get("error_stats", {}).get(self._key)
         if self._key in ["grill_clean_countdown", "grease_trap_clean_countdown"]:
             return state.get("usage", {}).get(self._key)
-        if self._key == "pellet_level":
-            features = state.get("features", {})
-            if not features.get("pellet_sensor_connected", 0):
-                return None
-            return state.get("status", {}).get("pellet_level")
         return state.get("status", {}).get(self._key)
 
 
