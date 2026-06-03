@@ -410,9 +410,23 @@ class TraegerSensor(TraegerBaseEntity, SensorEntity):
     def grill_state(self) -> dict:
         return self.coordinator.data.get(self.grill_id, {})
 
+    def _is_pellet_sensor_connected(self, state: dict[str, Any] | None = None) -> bool:
+        """Return True when the grill reports a connected pellet sensor."""
+        snapshot = state or self.grill_state
+        features = snapshot.get("features") or {}
+        try:
+            return int(features.get("pellet_sensor_connected", 0)) == 1
+        except (TypeError, ValueError):
+            return False
+
     @property
     def available(self) -> bool:
-        return self.grill_state.get("status", {}).get("connected", False)
+        state = self.grill_state
+        if not state.get("status", {}).get("connected", False):
+            return False
+        if self._key == "pellet_level":
+            return self._is_pellet_sensor_connected(state)
+        return True
 
     @property
     def native_value(self):
@@ -482,6 +496,10 @@ class TraegerSensor(TraegerBaseEntity, SensorEntity):
             return state.get("usage", {}).get("error_stats", {}).get(self._key)
         if self._key in ["grill_clean_countdown", "grease_trap_clean_countdown"]:
             return state.get("usage", {}).get(self._key)
+        if self._key == "pellet_level":
+            if not self._is_pellet_sensor_connected(state):
+                return None
+            return state.get("status", {}).get("pellet_level")
         return state.get("status", {}).get(self._key)
 
 
