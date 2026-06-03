@@ -412,8 +412,8 @@ class TraegerSensor(TraegerBaseEntity, SensorEntity):
 
     def _is_pellet_sensor_connected(self, state: dict[str, Any] | None = None) -> bool:
         """Return True when the grill reports a connected pellet sensor."""
-        snapshot = state or self.grill_state
-        features = snapshot.get("features") or {}
+        current_state = state or self.grill_state
+        features = current_state.get("features") or {}
         try:
             return int(features.get("pellet_sensor_connected", 0)) == 1
         except (TypeError, ValueError):

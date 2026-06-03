@@ -8,7 +8,8 @@ import types
 from pathlib import Path
 
 
-SENSOR_PATH = Path(__file__).resolve().parents[1] / "custom_components" / "traeger" / "sensor.py"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+SENSOR_PATH = PROJECT_ROOT / "custom_components" / "traeger" / "sensor.py"
 
 
 def _load_traeger_sensor_class():
