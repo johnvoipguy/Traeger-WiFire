@@ -152,6 +152,11 @@ def _make_pellet_sensor(state: dict):
     )
 
 
+def _make_sensor(state: dict, name: str, key: str, unit: str | None = None):
+    sensor_cls = _load_traeger_sensor_class()
+    return sensor_cls(_DummyCoordinator(state), _DummyClient(), "grill-1", name, key, unit)
+
+
 def test_pellet_level_unavailable_without_pellet_sensor():
     sensor = _make_pellet_sensor(
         {
@@ -185,3 +190,21 @@ def test_pellet_level_unavailable_when_grill_disconnected():
     )
 
     assert sensor.available is False
+
+
+def test_runtime_text_sensors_return_compact_strings():
+    state = {
+        "status": {"connected": True},
+        "usage": {"auger": 310, "fan": 3750, "hotrod": 59, "runtime": 7322},
+    }
+
+    assert _make_sensor(state, "Auger Runtime Text", "auger_runtime_text").native_value == "5:10"
+    assert _make_sensor(state, "Fan Runtime Text", "fan_runtime_text").native_value == "1:02:30"
+    assert _make_sensor(state, "Hotrod Runtime Text", "hotrod_runtime_text").native_value == "0:59"
+    assert _make_sensor(state, "Runtime Text", "runtime_text").native_value == "2:02:02"
+
+
+def test_runtime_text_sensors_return_none_when_usage_missing():
+    state = {"status": {"connected": True}, "usage": {"auger": None}}
+
+    assert _make_sensor(state, "Auger Runtime Text", "auger_runtime_text").native_value is None

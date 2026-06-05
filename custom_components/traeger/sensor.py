@@ -229,12 +229,30 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                     coordinator,
                     client,
                     grill_id,
+                    "Auger Runtime Text",
+                    "auger_runtime_text",
+                    None,
+                    category=EntityCategory.DIAGNOSTIC,
+                ),
+                TraegerSensor(
+                    coordinator,
+                    client,
+                    grill_id,
                     "Fan Runtime",
                     "fan",
                     UnitOfTime.SECONDS,
                     category=EntityCategory.DIAGNOSTIC,
                     enabled_default=False,
                     device_class=SensorDeviceClass.DURATION,
+                ),
+                TraegerSensor(
+                    coordinator,
+                    client,
+                    grill_id,
+                    "Fan Runtime Text",
+                    "fan_runtime_text",
+                    None,
+                    category=EntityCategory.DIAGNOSTIC,
                 ),
                 TraegerSensor(
                     coordinator,
@@ -251,12 +269,30 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                     coordinator,
                     client,
                     grill_id,
+                    "Hotrod Runtime Text",
+                    "hotrod_runtime_text",
+                    None,
+                    category=EntityCategory.DIAGNOSTIC,
+                ),
+                TraegerSensor(
+                    coordinator,
+                    client,
+                    grill_id,
                     "Runtime",
                     "runtime",
                     UnitOfTime.SECONDS,
                     category=EntityCategory.DIAGNOSTIC,
                     enabled_default=False,
                     device_class=SensorDeviceClass.DURATION,
+                ),
+                TraegerSensor(
+                    coordinator,
+                    client,
+                    grill_id,
+                    "Runtime Text",
+                    "runtime_text",
+                    None,
+                    category=EntityCategory.DIAGNOSTIC,
                 ),
                 TraegerSensor(
                     coordinator,
@@ -482,6 +518,14 @@ class TraegerSensor(TraegerBaseEntity, SensorEntity):
             return state.get("settings", {}).get("ssid")
         if self._key in ["auger", "fan", "hotrod", "runtime"]:
             return state.get("usage", {}).get(self._key)
+        runtime_text_keys = {
+            "auger_runtime_text": "auger",
+            "fan_runtime_text": "fan",
+            "hotrod_runtime_text": "hotrod",
+            "runtime_text": "runtime",
+        }
+        if self._key in runtime_text_keys:
+            return seconds_to_compact(state.get("usage", {}).get(runtime_text_keys[self._key]))
         if self._key in [
             "ignite_fail",
             "overheat",
