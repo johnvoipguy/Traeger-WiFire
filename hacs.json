@@ -1,4 +1,5 @@
 {
+  "homeassistant": "2024.12.0",
   "name": "Traeger WiFIRE",
   "render_readme": true
 }
