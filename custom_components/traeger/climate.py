@@ -89,8 +89,7 @@ class TraegerGrill(ClimateEntity, TraegerBaseEntity):
 
     def __init__(self, client, grill_id: str, *, coordinator=None) -> None:
         super().__init__(client, grill_id, name="Grill Climate", coordinator=coordinator)
-        self._attr_unique_id = "{grill_id}_climate"
-        self.entity_id = "climate.{slugify(grill_id)}_climate"
+        self._attr_unique_id = f"{grill_id}_climate"
         self._attr_entity_registry_visible_default = True
         _LOGGER.debug("Initialized climate {self.entity_id} for grill {grill_id}")
 
@@ -205,11 +204,10 @@ class TraegerGrillProbe(ClimateEntity, TraegerBaseEntity):
     """Climate entity for a grill probe."""
 
     def __init__(self, client, grill_id: str, channel: str, *, coordinator=None) -> None:
-        super().__init__(client, grill_id, name="Probe {channel}", coordinator=coordinator)
+        super().__init__(client, grill_id, name=f"Probe {channel}", coordinator=coordinator)
         self._channel = channel
         self.accessory_id = channel
-        self._attr_unique_id = "{grill_id}_probe_{channel}"
-        self.entity_id = "climate.{slugify(grill_id)}_probe_{slugify(channel)}"
+        self._attr_unique_id = f"{grill_id}_probe_{channel}"
         self._attr_entity_registry_visible_default = True
         _LOGGER.debug("Initialized probe {self.entity_id} for grill {grill_id}")
 
