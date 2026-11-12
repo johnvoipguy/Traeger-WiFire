@@ -42,6 +42,8 @@ GRILL_MODE_SLEEPING = 2  # Sleeping (Power switch on, screen off)
 # Grill Temps
 GRILL_MIN_TEMP_C = 75
 GRILL_MIN_TEMP_F = 165
+GRILL_MAX_TEMP_C = 250
+GRILL_MAX_TEMP_F = 500
 
 # Probe Preset Modes
 PROBE_PRESET_MODES = {

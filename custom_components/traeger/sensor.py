@@ -167,7 +167,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                     grill_id,
                     "Ambient Temperature",
                     "ambient",
-                    UnitOfTemperature.FAHRENHEIT,
+                    None,  # unit follows the grill setting (see TraegerSensor)
+                    device_class=SensorDeviceClass.TEMPERATURE,
                 ),
                 TraegerSensor(
                     coordinator,
@@ -445,6 +446,13 @@ class TraegerSensor(TraegerBaseEntity, SensorEntity):
     @property
     def grill_state(self) -> dict:
         return self.coordinator.data.get(self.grill_id, {})
+
+    @property
+    def native_unit_of_measurement(self):
+        """Temperature sensors report in the unit the grill is set to."""
+        if self._attr_device_class == SensorDeviceClass.TEMPERATURE:
+            return self.grill_units
+        return self._attr_native_unit_of_measurement
 
     def _is_pellet_sensor_connected(self, state: dict[str, Any] | None = None) -> bool:
         """Return True when the grill reports a connected pellet sensor."""
