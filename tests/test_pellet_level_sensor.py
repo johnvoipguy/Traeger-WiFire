@@ -7,7 +7,6 @@ import sys
 import types
 from pathlib import Path
 
-
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SENSOR_PATH = PROJECT_ROOT / "custom_components" / "traeger" / "sensor.py"
 

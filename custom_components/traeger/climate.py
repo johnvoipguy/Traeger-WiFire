@@ -17,6 +17,8 @@ from .const import (
     #    GRILL_MODE_IDLE,
     #    GRILL_MODE_SLEEPING,
     #    GRILL_MODE_SHUTDOWN,
+    GRILL_MAX_TEMP_C,
+    GRILL_MAX_TEMP_F,
     GRILL_MIN_TEMP_C,
     GRILL_MIN_TEMP_F,
     #   GRILL_MODE_COOL_DOWN,
@@ -32,6 +34,23 @@ from .entity import TraegerBaseEntity
 from .monitor import TraegerGrillMonitor
 
 _LOGGER = logging.getLogger(__name__)
+
+
+# The cloud sends ``limits`` in degrees Fahrenheit even when the grill's display
+# unit is Celsius: a Celsius grill (status.units == 0) reports
+# {"max_grill_temp": 500}, while its status/set temperatures are in Celsius and
+# its real maximum is 250 C. This was confirmed on one Celsius grill (device type
+# 2106, fw 02.02.05); other models were not available to check. As no Celsius
+# grill can reach 300 C, treat the limits block as Fahrenheit only when
+# max_grill_temp is above this value, so limits that already follow the grill's
+# unit are left untouched.
+LIMITS_FAHRENHEIT_THRESHOLD = 300
+
+
+def _limits_are_fahrenheit(limits: dict) -> bool:
+    """Return True if the limits block is clearly expressed in Fahrenheit."""
+    max_temp = limits.get("max_grill_temp")
+    return max_temp is not None and max_temp > LIMITS_FAHRENHEIT_THRESHOLD
 
 
 def _dedupe_entities(entities: list) -> list:
@@ -151,25 +170,37 @@ class TraegerGrill(ClimateEntity, TraegerBaseEntity):
 
     @property
     def min_temp(self):
-        units = self.temperature_unit
-        limits = self.grill_limits or {}
-        if not limits:
-            return GRILL_MIN_TEMP_C if units == UnitOfTemperature.CELSIUS else GRILL_MIN_TEMP_F
-        return limits.get(
-            "min_grill_temp",
-            GRILL_MIN_TEMP_C if units == UnitOfTemperature.CELSIUS else GRILL_MIN_TEMP_F,
+        default = (
+            GRILL_MIN_TEMP_C
+            if self.temperature_unit == UnitOfTemperature.CELSIUS
+            else GRILL_MIN_TEMP_F
         )
+        return self._limit("min_grill_temp", default)
 
     @property
     def max_temp(self):
-        units = self.temperature_unit
-        limits = self.grill_limits or {}
-        if not limits:
-            return GRILL_MIN_TEMP_C if units == UnitOfTemperature.CELSIUS else GRILL_MIN_TEMP_F
-        return limits.get(
-            "max_grill_temp",
-            GRILL_MIN_TEMP_C if units == UnitOfTemperature.CELSIUS else GRILL_MIN_TEMP_F,
+        default = (
+            GRILL_MAX_TEMP_C
+            if self.temperature_unit == UnitOfTemperature.CELSIUS
+            else GRILL_MAX_TEMP_F
         )
+        value = self._limit("max_grill_temp", default)
+        if self.temperature_unit == UnitOfTemperature.CELSIUS:
+            # 500 F converts to 260 C, but the grill's Celsius scale stops at 250.
+            return min(value, GRILL_MAX_TEMP_C)
+        return value
+
+    def _limit(self, key: str, default: int) -> int:
+        """Return a limit from the grill, expressed in the grill's own unit."""
+        limits = self.grill_limits or {}
+        value = limits.get(key)
+        if value is None:
+            return default
+        if self.temperature_unit == UnitOfTemperature.CELSIUS and _limits_are_fahrenheit(
+            limits
+        ):
+            return round((value - 32) * 5 / 9)
+        return value
 
     @property
     def grill_limits(self) -> dict | None:
@@ -307,4 +338,4 @@ class TraegerGrillProbe(ClimateEntity, TraegerBaseEntity):
     @property
     def supported_features(self):
         return ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.PRESET_MODE
-        
+
