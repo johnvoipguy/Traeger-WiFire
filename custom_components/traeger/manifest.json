@@ -4,10 +4,10 @@
   "codeowners": ["@johnvoipguy"],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/johnvoipguy/hacs-Traeger-WiFire",
+  "documentation": "https://github.com/johnvoipguy/Traeger-WiFire",
   "integration_type": "device",
   "iot_class": "cloud_push",
-  "issue_tracker": "https://github.com/johnvoipguy/hacs-Traeger-WiFire/issues",
+  "issue_tracker": "https://github.com/johnvoipguy/Traeger-WiFire/issues",
   "quality_scale": "bronze",
   "requirements": ["aiomqtt>=2.1.0,<3"],
   "version": "1.0.1"

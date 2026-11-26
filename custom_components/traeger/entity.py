@@ -6,6 +6,7 @@ import logging
 from typing import Any
 
 from homeassistant.const import UnitOfTemperature
+from homeassistant.core import callback
 import homeassistant.helpers.device_registry as dr
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -32,6 +33,7 @@ class TraegerBaseEntity(CoordinatorEntity, RestoreEntity):
         self.client = client
         self.grill_id = grill_id
         self._attr_name = name
+        self._last_dev_info: tuple | None = None
         # Do not construct DeviceInfo here; device_info is provided dynamically
 
     def _get_fw_version(self) -> str | None:
@@ -83,13 +85,35 @@ class TraegerBaseEntity(CoordinatorEntity, RestoreEntity):
         """Return dynamic device info dict for the registry."""
         return self._compose_device_info()
 
+    def _lookup_device(self, dev_reg: dr.DeviceRegistry):
+        """Find this grill's device, preferring the newer registry API when present."""
+        identifier = (DOMAIN, self.grill_id)
+        by_identifier = getattr(dev_reg, "async_get_device_by_identifier", None)
+        config_entry = getattr(self.platform, "config_entry", None) if self.platform else None
+        if by_identifier is not None and config_entry is not None:
+            # HA 2026.11+: identifiers are only unique per config entry.
+            return by_identifier(identifier, config_entry.entry_id)
+        return dev_reg.async_get_device(identifiers={identifier})
+
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
 
-        async def _update_device_registry() -> None:
+        @callback
+        def _update_device_registry() -> None:
             dev_info = self._compose_device_info()
+            # Only touch the registry when name/model/firmware actually changed.
+            # Previously every entity spawned a task on every MQTT push.
+            key = (
+                dev_info.get("name"),
+                dev_info.get("manufacturer"),
+                dev_info.get("model"),
+                dev_info.get("sw_version"),
+            )
+            if key == self._last_dev_info:
+                return
+            self._last_dev_info = key
             dev_reg = dr.async_get(self.hass)
-            device = dev_reg.async_get_device(identifiers={(DOMAIN, self.grill_id)})
+            device = self._lookup_device(dev_reg)
             if device is None:
                 return
 
@@ -111,14 +135,10 @@ class TraegerBaseEntity(CoordinatorEntity, RestoreEntity):
             if updates:
                 dev_reg.async_update_device(device.id, **updates)
 
-        # Update now and on future coordinator pushes
-        await _update_device_registry()
+        # Update now and on future coordinator pushes (synchronously, no task per push)
+        _update_device_registry()
         if self.coordinator:
-            self.async_on_remove(
-                self.coordinator.async_add_listener(
-                    lambda: self.hass.async_create_task(_update_device_registry())
-                )
-            )
+            self.async_on_remove(self.coordinator.async_add_listener(_update_device_registry))
 
     def _friendly_name_from_state(self) -> str | None:
         details = (self.grill_state or {}).get("details") or {}
