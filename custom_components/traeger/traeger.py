@@ -395,18 +395,23 @@ class traeger:
             self.token_remaining(),
             self.mqtt_url_remaining(),
         )
-        if self.mqtt_url_remaining() < 60 or not self._mqtt_connected:
-            if self.message_task is not None:
-                self.message_task.cancel()
-                try:
-                    await self.message_task
-                except asyncio.CancelledError:
-                    pass
-                self.message_task = None
-            self.mqtt_client = None
-            self._mqtt_connected = False
-            await self.connect_mqtt()
-        self.task = self.hass.loop.call_later(30, self.syncmain)
+        try:
+            if self.mqtt_url_remaining() < 60 or not self._mqtt_connected:
+                if self.message_task is not None:
+                    self.message_task.cancel()
+                    try:
+                        await self.message_task
+                    except asyncio.CancelledError:
+                        pass
+                    self.message_task = None
+                self.mqtt_client = None
+                self._mqtt_connected = False
+                await self.connect_mqtt()
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning("Traeger reconnect failed, will retry in 30s: %s", err)
+        finally:
+            # Always reschedule, so one failed reconnect can't stop updates for good.
+            self.task = self.hass.loop.call_later(30, self.syncmain)
 
     def get_state_for_device(self, thingName):
         state = self.grill_status.get(thingName, {})
@@ -459,11 +464,13 @@ class traeger:
                 grill_id = grill["thingName"]
                 await self.update_state(grill_id)
             await self.connect_mqtt()
-        except (TimeoutError, aiohttp.ClientError, MqttError) as e:
-            _LOGGER.error(f"Failed to start Traeger: {e}")
-            raise
-        _LOGGER.debug("Traeger setup completed")
-        self.task = self.hass.loop.call_later(30, self.syncmain)
+        except Exception as e:  # noqa: BLE001
+            _LOGGER.error("Failed to start Traeger, will retry in 30s: %s", e)
+        else:
+            _LOGGER.debug("Traeger setup completed")
+        finally:
+            # Keep the watchdog running even if the first start failed.
+            self.task = self.hass.loop.call_later(30, self.syncmain)
 
     async def kill(self):
         if self.task is not None:
