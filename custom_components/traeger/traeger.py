@@ -7,7 +7,6 @@ import datetime
 from datetime import timedelta
 import json
 import logging
-import ssl
 import time
 from typing import Any
 import urllib.parse
@@ -19,6 +18,7 @@ import async_timeout
 from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.util.ssl import get_default_context
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -40,6 +40,7 @@ class traeger:
         self.access_token = None
         self.token = None
         self.token_expires = 0
+        self._refresh_token: str | None = None
         self.mqtt_url = None
         self.mqtt_url_expires = time.time()
         self.grill_callbacks = {}
@@ -59,8 +60,13 @@ class traeger:
     def token_remaining(self):
         return self.token_expires - time.time()
 
-    async def api_wrapper(self, method: str, url: str, data: dict = {}, headers: dict = {}):
-        _LOGGER.debug(f"API call: method={method}, url={url}, data={data}, headers={headers}")
+    async def api_wrapper(
+        self, method: str, url: str, data: dict | None = None, headers: dict | None = None
+    ):
+        data = data if data is not None else {}
+        headers = headers if headers is not None else {}
+        # Never log request bodies or headers: they carry the password and bearer tokens.
+        _LOGGER.debug("API call: method=%s, url=%s", method, url.split("?", 1)[0])
         response_text = None
         try:
             async with async_timeout.timeout(TIMEOUT):
@@ -94,12 +100,18 @@ class traeger:
             _LOGGER.error(f"Client error fetching data from {url}: {e}")
             raise
 
-    async def do_cognito(self):
-        t = datetime.datetime.utcnow()
+    async def do_cognito(self, use_refresh_token: bool = False):
+        t = datetime.datetime.now(datetime.UTC)
         amzdate = t.strftime("%Y%m%dT%H%M%SZ")
+        if use_refresh_token and self._refresh_token:
+            auth_flow = "REFRESH_TOKEN_AUTH"
+            auth_params = {"REFRESH_TOKEN": self._refresh_token}
+        else:
+            auth_flow = "USER_PASSWORD_AUTH"
+            auth_params = {"USERNAME": self.username, "PASSWORD": self.password}
         payload = {
-            "AuthParameters": {"USERNAME": self.username, "PASSWORD": self.password},
-            "AuthFlow": "USER_PASSWORD_AUTH",
+            "AuthParameters": auth_params,
+            "AuthFlow": auth_flow,
             "ClientId": CLIENT_ID,
         }
         headers = {
@@ -107,7 +119,7 @@ class traeger:
             "X-Amz-Date": amzdate,
             "X-Amz-Target": "AWSCognitoIdentityProviderService.InitiateAuth",
         }
-        _LOGGER.debug(f"Sending Cognito request: payload={payload}, headers={headers}")
+        _LOGGER.debug("Sending Cognito auth request (flow=%s)", auth_flow)
         try:
             response = await self.api_wrapper(
                 "post",
@@ -115,7 +127,11 @@ class traeger:
                 data=payload,
                 headers=headers,
             )
-            _LOGGER.debug(f"Cognito response: {response}")
+            _LOGGER.debug(
+                "Cognito auth succeeded (flow=%s, expires_in=%s)",
+                auth_flow,
+                (response.get("AuthenticationResult") or {}).get("ExpiresIn"),
+            )
             return response
         except aiohttp.ClientResponseError as e:
             _LOGGER.error(
@@ -129,12 +145,22 @@ class traeger:
     async def refresh_token(self):
         if self.token_remaining() < 60:
             request_time = time.time()
-            response = await self.do_cognito()
-            self.token_expires = response["AuthenticationResult"]["ExpiresIn"] + request_time
-            self.token = response["AuthenticationResult"]["IdToken"]
-            _LOGGER.debug(
-                f"Refreshed token: token={self.token[:10]}..., expires={self.token_expires}"
-            )
+            response = None
+            if self._refresh_token:
+                try:
+                    response = await self.do_cognito(use_refresh_token=True)
+                except Exception as err:  # noqa: BLE001
+                    _LOGGER.debug("Refresh-token auth failed, falling back to password: %s", err)
+                    self._refresh_token = None
+            if response is None:
+                response = await self.do_cognito()
+            result = response["AuthenticationResult"]
+            self.token_expires = result["ExpiresIn"] + request_time
+            self.token = result["IdToken"]
+            # REFRESH_TOKEN_AUTH responses do not include a new refresh token; keep the old one.
+            if result.get("RefreshToken"):
+                self._refresh_token = result["RefreshToken"]
+            _LOGGER.debug("Refreshed auth token, expires at %s", self.token_expires)
 
     async def get_user_data(self):
         await self.refresh_token()
@@ -287,8 +313,11 @@ class traeger:
                 )
                 self.mqtt_url_expires = json_data["expirationSeconds"] + mqtt_request_time
                 self.mqtt_url = json_data["signedUrl"]
+                # The signed URL is a credential; log only its host.
                 _LOGGER.debug(
-                    f"MQTT URL refreshed: {self.mqtt_url}, expires={self.mqtt_url_expires}"
+                    "MQTT URL refreshed for host %s, expires=%s",
+                    urllib.parse.urlparse(self.mqtt_url).hostname,
+                    self.mqtt_url_expires,
                 )
             except Exception as e:
                 _LOGGER.error(f"Failed to refresh MQTT URL: {e}")
@@ -304,9 +333,8 @@ class traeger:
                 mqtt_parts = urllib.parse.urlparse(self.mqtt_url)
                 headers = {"Host": mqtt_parts.netloc}
                 ws_path = f"{mqtt_parts.path}?{mqtt_parts.query}"
-                context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-                context.check_hostname = False
-                context.verify_mode = ssl.CERT_NONE
+                # Verify the AWS IoT server certificate (HA's shared, pre-built context).
+                context = get_default_context()
                 self.mqtt_client = MQTTClient(
                     hostname=mqtt_parts.hostname,
                     port=443,
