@@ -19,6 +19,8 @@ from .const import (
     #    GRILL_MODE_SHUTDOWN,
     GRILL_MIN_TEMP_C,
     GRILL_MIN_TEMP_F,
+    GRILL_MAX_TEMP_C,
+    GRILL_MAX_TEMP_F,
     #   GRILL_MODE_COOL_DOWN,
     GRILL_MODE_CUSTOM_COOK,
     GRILL_MODE_IGNITING,
@@ -166,10 +168,10 @@ class TraegerGrill(ClimateEntity, TraegerBaseEntity):
         units = self.temperature_unit
         limits = self.grill_limits or {}
         if not limits:
-            return GRILL_MIN_TEMP_C if units == UnitOfTemperature.CELSIUS else GRILL_MIN_TEMP_F
+            return GRILL_MAX_TEMP_C if units == UnitOfTemperature.CELSIUS else GRILL_MAX_TEMP_F
         return limits.get(
             "max_grill_temp",
-            GRILL_MIN_TEMP_C if units == UnitOfTemperature.CELSIUS else GRILL_MIN_TEMP_F,
+            GRILL_MAX_TEMP_C if units == UnitOfTemperature.CELSIUS else GRILL_MAX_TEMP_F,
         )
 
     @property
