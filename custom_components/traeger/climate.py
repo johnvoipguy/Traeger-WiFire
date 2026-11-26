@@ -117,7 +117,7 @@ class TraegerGrill(ClimateEntity, TraegerBaseEntity):
         return "mdi:grill"
 
     @property
-    def temperature_unit(self):
+    def native_temperature_unit(self):
         return self.grill_units or UnitOfTemperature.FAHRENHEIT
 
     @property
@@ -139,20 +139,20 @@ class TraegerGrill(ClimateEntity, TraegerBaseEntity):
         return [HVACMode.HEAT, HVACMode.OFF]
 
     @property
-    def current_temperature(self):
+    def native_current_temperature(self):
         state = self.grill_state or {}
         status = state.get("status", {})
         return status.get("grill")
 
     @property
-    def target_temperature(self):
+    def native_target_temperature(self):
         state = self.grill_state or {}
         status = state.get("status", {})
         return status.get("set")
 
     @property
     def min_temp(self):
-        units = self.temperature_unit
+        units = self.native_temperature_unit
         limits = self.grill_limits or {}
         if not limits:
             return GRILL_MIN_TEMP_C if units == UnitOfTemperature.CELSIUS else GRILL_MIN_TEMP_F
@@ -163,7 +163,7 @@ class TraegerGrill(ClimateEntity, TraegerBaseEntity):
 
     @property
     def max_temp(self):
-        units = self.temperature_unit
+        units = self.native_temperature_unit
         limits = self.grill_limits or {}
         if not limits:
             return GRILL_MIN_TEMP_C if units == UnitOfTemperature.CELSIUS else GRILL_MIN_TEMP_F
@@ -240,7 +240,7 @@ class TraegerGrillProbe(ClimateEntity, TraegerBaseEntity):
         return "mdi:thermometer"
 
     @property
-    def temperature_unit(self):
+    def native_temperature_unit(self):
         return self.grill_units or UnitOfTemperature.FAHRENHEIT
 
     @property
@@ -257,9 +257,9 @@ class TraegerGrillProbe(ClimateEntity, TraegerBaseEntity):
     def preset_mode(self):
         if not self.grill_state or not self.available:
             return None
-        probe_temp = self.target_temperature
+        probe_temp = self.native_target_temperature
         for preset, temps in PROBE_PRESET_MODES.items():
-            if temps[self.temperature_unit] == probe_temp:
+            if temps[self.native_temperature_unit] == probe_temp:
                 return preset
         return None
 
@@ -268,7 +268,7 @@ class TraegerGrillProbe(ClimateEntity, TraegerBaseEntity):
         return list(PROBE_PRESET_MODES.keys())
 
     @property
-    def current_temperature(self):
+    def native_current_temperature(self):
         state = self.grill_state or {}
         status = state.get("status") or {}
         for acc in status.get("acc", []):
@@ -277,7 +277,7 @@ class TraegerGrillProbe(ClimateEntity, TraegerBaseEntity):
         return None
 
     @property
-    def target_temperature(self):
+    def native_target_temperature(self):
         state = self.grill_state or {}
         status = state.get("status") or {}
         for acc in status.get("acc", []):
@@ -291,7 +291,7 @@ class TraegerGrillProbe(ClimateEntity, TraegerBaseEntity):
 
     @property
     def max_temp(self):
-        return 100 if self.temperature_unit == UnitOfTemperature.CELSIUS else 212
+        return 100 if self.native_temperature_unit == UnitOfTemperature.CELSIUS else 212
 
     async def async_set_temperature(self, **kwargs):
         temperature = kwargs.get("temperature")
@@ -302,7 +302,7 @@ class TraegerGrillProbe(ClimateEntity, TraegerBaseEntity):
     async def async_set_preset_mode(self, preset_mode):
         if preset_mode in PROBE_PRESET_MODES:
             await self.client.set_probe_temperature(
-                self.grill_id, PROBE_PRESET_MODES[preset_mode][self.temperature_unit]
+                self.grill_id, PROBE_PRESET_MODES[preset_mode][self.native_temperature_unit]
             )
             self.async_schedule_update_ha_state()
 

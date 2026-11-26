@@ -102,10 +102,12 @@ class TraegerGrillMonitor:
             added = self._add_new_from_state(state)
             if added:
                 _LOGGER.debug(
-                    "Monitor for grill {self.grill_id} added {added} new entity(ies) from coordinator update"
+                    "Monitor for grill %s added %s new entity(ies) from coordinator update",
+                    self.grill_id,
+                    added,
                 )
         except Exception:  # Best-effort; never raise from callbacks
-            _LOGGER.exception("Monitor update failed for grill {self.grill_id}")
+            _LOGGER.exception("Monitor update failed for grill %s", self.grill_id)
 
     async def async_setup(self) -> None:
         """Discover accessories and add entities. Subscribe for future updates."""
